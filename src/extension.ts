@@ -51,7 +51,7 @@ export async function activate(context: vscodeTypes.ExtensionContext) {
   const vscode = require('vscode');
   const rootPath = vscode.workspace.workspaceFolders?.[0] ? uriToPath(vscode.workspace.workspaceFolders[0].uri) : undefined;
 
-  const testwiseProvider = new TestwiseProvider(vscode.workspace.rootPath);
+  const testwiseProvider = new TestwiseProvider(rootPath);
   const treeView = vscode.window.createTreeView('pw.extension.testwiseView', {
     treeDataProvider: testwiseProvider,
     showCollapseAll: true
@@ -59,7 +59,10 @@ export async function activate(context: vscodeTypes.ExtensionContext) {
 
   const updateFile = async (items: {item: any, state: any}[]) => {
     if (!rootPath) return;
-    const filePath = path.join(rootPath, 'seed-data', 'registeredSubjects.json');
+    const seedDataDir = path.join(rootPath, 'seed-data');
+    if (!fs.existsSync(seedDataDir))
+      fs.mkdirSync(seedDataDir, { recursive: true });
+    const filePath = path.join(seedDataDir, 'registeredSubjects.json');
 
     let registered: any[] = [];
     if (fs.existsSync(filePath)) {
@@ -100,14 +103,16 @@ export async function activate(context: vscodeTypes.ExtensionContext) {
       })
   );
 
-  treeView.onDidChangeCheckboxState(async (e: any) => {
-    const itemsToUpdate = e.items.map(([item, state]: [TestwiseItem, any]) => ({ item, state }));
-    await updateFile(itemsToUpdate);
-  });
-
-  vscode.commands.registerCommand('testwise.refreshEntry', () => {
-    testwiseProvider.refresh();
-  });
+  context.subscriptions.push(
+      treeView,
+      treeView.onDidChangeCheckboxState(async (e: any) => {
+        const itemsToUpdate = e.items.map(([item, state]: [TestwiseItem, any]) => ({ item, state }));
+        await updateFile(itemsToUpdate);
+      }),
+      vscode.commands.registerCommand('testwise.refreshEntry', () => {
+        testwiseProvider.refresh();
+      })
+  );
 
   testwiseProvider.refresh();
   void new Extension(require('vscode'), context).activate();
