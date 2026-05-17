@@ -31,12 +31,25 @@ export class TestwiseProvider implements vscode.TreeDataProvider<vscode.TreeItem
     return element;
   }
 
+  private findTestwiseModuleSeedData(): string | undefined {
+    if (!this.workspaceRoot) return undefined;
+    const nmPath = path.join(this.workspaceRoot, 'node_modules', '@thinkwise');
+    if (!fs.existsSync(nmPath)) return undefined;
+    const entries = fs.readdirSync(nmPath).filter(e => e.startsWith('testwise'));
+    for (const entry of entries) {
+      const candidate = path.join(nmPath, entry, 'seed-data');
+      if (fs.existsSync(candidate)) return candidate;
+    }
+    return undefined;
+  }
+
   async getChildren(element?: TestwiseItem): Promise<TestwiseItem[]> {
     if (!this.workspaceRoot)
       return [new TestwiseItem('Open a folder to see seed data', vscode.TreeItemCollapsibleState.None, 'info_node')];
 
-    const dataPath = path.join(this.workspaceRoot, 'seed-data', 'subjects.json');
-    if (!fs.existsSync(dataPath)) return [];
+    const seedDataDir = this.findTestwiseModuleSeedData();
+    const dataPath = seedDataDir ? path.join(seedDataDir, 'subjects.json') : undefined;
+    if (!dataPath || !fs.existsSync(dataPath)) return [];
 
     let rawData: any[] = [];
     try {
@@ -95,7 +108,10 @@ export class TestwiseProvider implements vscode.TreeDataProvider<vscode.TreeItem
   }
 
   private getScreenCheckboxes(subjectName: string, variantName: string | null): TestwiseItem[] {
-    const registeredPath = path.join(this.workspaceRoot!, 'seed-data', 'registeredSubjects.json');
+    const localSeedData = path.join(this.workspaceRoot!, 'seed-data');
+    if (!fs.existsSync(localSeedData))
+      fs.mkdirSync(localSeedData, { recursive: true });
+    const registeredPath = path.join(localSeedData, 'registeredSubjects.json');
     let registered: any[] = [];
     if (fs.existsSync(registeredPath))
       try { registered = JSON.parse(fs.readFileSync(registeredPath, 'utf-8')); } catch (e) { }
