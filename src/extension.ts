@@ -191,7 +191,7 @@ export class Extension implements RunHooks {
       requestWatchRun: this._runWatchedTests.bind(this),
       logger: this._logger,
     });
-    this._testController = vscode.tests.createTestController('testwise', 'Testwise');
+    this._testController = vscode.tests.createTestController('testwise', 'Playwright');
     this._testController.resolveHandler = item => this._resolveChildren(item);
     this._testController.refreshHandler = () => this._rebuildModelsImmediately(true);
     const supportsContinuousRun = true;
